@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Electron Configuration Lab Simulator</title>
+<style>
+:root{--ink:#17233b;--muted:#61708a;--line:#d9e1ed;--panel:#fff;--bg:#f3f6fb;--blue:#2457c5;--pale:#eaf0ff;--orange:#f59e0b;--green:#16845b;--red:#b42318}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{background:linear-gradient(120deg,#172b55,#2457c5);color:white;padding:24px max(18px,calc((100% - 1100px)/2))}
+header h1{margin:0 0 5px;font-size:clamp(24px,4vw,34px)}header p{margin:0;color:#e1e9ff}
+main{max-width:1100px;margin:20px auto;padding:0 16px 36px;display:grid;gap:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 3px 12px #1b31500a}
+h2{font-size:20px;margin:0 0 12px}h3{font-size:16px;margin:12px 0 7px}
+.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:end}
+label{font-size:13px;font-weight:700;color:var(--muted);display:block;margin-bottom:5px}
+select,button,input{font:inherit;border:1px solid #c5cfdf;border-radius:9px;padding:9px 11px;background:white;color:var(--ink)}
+button{cursor:pointer;font-weight:700}button.primary{background:var(--blue);color:white;border-color:var(--blue)}button:hover{filter:brightness(.97)}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.tabs button[aria-pressed=true]{background:var(--pale);border-color:var(--blue);color:var(--blue)}
+.layout{display:grid;grid-template-columns:1.15fr .85fr;gap:16px}.orbitals{display:grid;gap:12px}
+.subshell{border:1px solid var(--line);border-radius:12px;padding:10px}.subhead{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px;font-weight:800}
+.boxes{display:flex;gap:7px;flex-wrap:wrap}.orbital{width:52px;height:48px;border:1.5px solid #8290a8;border-radius:7px;display:flex;align-items:center;justify-content:center;gap:3px;background:#fbfcff;font-size:23px;cursor:pointer;user-select:none}.orbital:hover{border-color:var(--blue);background:#eef3ff}.orbital span{font-size:20px}.orbital .up{color:#2457c5}.orbital .down{color:#c04a22}
+.atom{min-height:250px;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle,#fff,#f4f7fc);border-radius:12px;position:relative;overflow:hidden}
+.atom svg{width:100%;max-width:310px}.statgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}.stat{background:#f5f7fb;border-radius:10px;padding:10px}.stat small{display:block;color:var(--muted)}.stat strong{font-size:18px}
+.message{padding:10px 12px;border-radius:10px;background:#f1f5fb;margin-top:10px}.message.good{background:#e9f8f0;color:#11633f}.message.bad{background:#fff0ee;color:#9e2119}
+table{border-collapse:collapse;width:100%;font-size:14px}th,td{border-bottom:1px solid var(--line);padding:9px;text-align:left}th{color:var(--muted);font-size:12px;text-transform:uppercase}
+.mini{color:var(--muted);font-size:13px}.pill{display:inline-block;background:#edf2fa;border-radius:999px;padding:3px 8px;font-size:12px;font-weight:700}
+.periodic{display:grid;grid-template-columns:repeat(18,minmax(18px,1fr));gap:3px}.el{padding:4px 0;border:1px solid var(--line);border-radius:5px;text-align:center;font-size:11px;cursor:pointer;background:#fff}.el.active{outline:2px solid var(--blue);background:var(--pale)}.el span{display:block;font-size:9px;color:var(--muted)}
+.question{padding:12px;border:1px solid var(--line);border-radius:10px;margin:9px 0}.question p{margin:0 0 8px}.answer{width:100%;min-height:68px}.foot{font-size:12px;color:var(--muted);text-align:center}
+@media(max-width:720px){.layout{grid-template-columns:1fr}.statgrid{grid-template-columns:repeat(3,1fr)}.periodic{grid-template-columns:repeat(9,minmax(24px,1fr))}.orbital{width:46px}}
+</style>
+</head>
+<body>
+<header><h1>Electron Configuration Lab</h1><p>An interactive classroom simulator for exploring electron arrangements, orbital rules, and atomic-radius trends.</p></header>
+<main>
+<section class="card">
+ <div class="controls">
+  <div><label for="element">Choose an element</label><select id="element"></select></div>
+  <div><label for="view">Orbital ordering</label><select id="view"><option value="energy">Energy order</option><option value="number">Subshell / diagonal-rule order</option></select></div>
+  <button id="reset">Reset electrons</button><button id="next" class="primary">Next element →</button>
+ </div>
+ <p class="mini">Click an orbital to add an electron. Click an occupied orbital to remove its last electron. Use <b>Check configuration</b> for feedback. This is a learning model, not a full quantum simulation.</p>
+</section>
+<section class="card">
+ <div class="tabs">
+  <button data-tab="config" aria-pressed="true">Electron configuration</button>
+  <button data-tab="radius" aria-pressed="false">Atomic radius</button>
+  <button data-tab="table" aria-pressed="false">Periodic table</button>
+  <button data-tab="practice" aria-pressed="false">Practice / handout prompts</button>
+ </div>
+ <div id="config" class="tabpane">
+  <div class="layout">
+   <div><h2>Orbital diagram</h2><div id="orbitalArea" class="orbitals"></div><div class="controls" style="margin-top:12px"><button class="primary" id="check">Check configuration</button><button id="fill">Fill ground state</button></div><div id="feedback" class="message">Choose an element and build its electron configuration.</div></div>
+   <div><h2>Atom overview</h2><div class="atom" id="atom"></div><div class="statgrid"><div class="stat"><small>Atomic number</small><strong id="z">3</strong></div><div class="stat"><small>Electrons (neutral)</small><strong id="eCount">3</strong></div><div class="stat"><small>Shells occupied</small><strong id="shells">2</strong></div></div><h3>Electron configuration</h3><div id="notation" style="font-size:20px;font-weight:800">1s² 2s¹</div><p id="shellNotation" class="mini"></p></div>
+  </div>
+ </div>
+ <div id="radius" class="tabpane" hidden><h2>Atomic-radius explorer</h2><p>Compare neutral atoms across Period 3 or down Group 1. Values below are approximate empirical covalent radii in picometers (pm); published radius scales can differ.</p><div class="controls"><div><label for="radiusMode">Trend</label><select id="radiusMode"><option value="period">Across Period 3 (Na → Ar)</option><option value="group">Down Group 1 (H → Na)</option></select></div></div><div id="radiusChart" style="margin-top:14px"></div><div id="radiusTable"></div><p class="mini">Trend to notice: radius generally decreases across a period as nuclear charge increases, and increases down a group as additional shells are occupied.</p></div>
+ <div id="table" class="tabpane" hidden><h2>Periodic table explorer</h2><p class="mini">Select an element to load it into the orbital model. Colors indicate the broad s, p, d, and f blocks.</p><div id="periodic" class="periodic"></div><div id="elementInfo" class="message"></div></div>
+ <div id="practice" class="tabpane" hidden><h2>Practice and handout helper</h2><p>Use the simulator first, then write your own response in the handout. These prompts follow the major ideas in the uploaded Electron Configuration handout.</p><div id="prompts"></div><button id="downloadAnswers" class="primary">Export my notes (.txt)</button><p class="mini">The export includes your typed notes and the current configuration. It does not automatically fill the original PDF.</p></div>
+</section>
+<section class="card"><h2>Rules to remember</h2><div class="layout"><div><b>Aufbau principle</b><p class="mini">Electrons fill available lower-energy orbitals first.</p><b>Pauli exclusion principle</b><p class="mini">An orbital holds up to two electrons with opposite spins.</p></div><div><b>Hund’s rule</b><p class="mini">Within equal-energy orbitals, place one electron in each orbital before pairing.</p><b>Diagonal-rule sequence</b><p class="mini">1s → 2s → 2p → 3s → 3p → 4s → 3d → 4p → 5s → 4d → 5p → 6s → 4f → 5d → 6p → 7s → 5f → 6d → 7p</p></div></div></section>
+<p class="foot">Works offline in a modern browser. Progress stays on this device unless you export your notes.</p>
+</main>
+<script>
+const els=[
+[1,'H','Hydrogen',1,1,53],[2,'He','Helium',18,1,31],[3,'Li','Lithium',1,2,167],[4,'Be','Beryllium',2,2,112],[5,'B','Boron',13,2,87],[6,'C','Carbon',14,2,67],[7,'N','Nitrogen',15,2,56],[8,'O','Oxygen',16,2,48],[9,'F','Fluorine',17,2,42],[10,'Ne','Neon',18,2,38],
+[11,'Na','Sodium',1,3,190],[12,'Mg','Magnesium',2,3,145],[13,'Al','Aluminum',13,3,118],[14,'Si','Silicon',14,3,111],[15,'P','Phosphorus',15,3,98],[16,'S','Sulfur',16,3,88],[17,'Cl','Chlorine',17,3,79],[18,'Ar','Argon',18,3,71],
+[19,'K','Potassium',1,4,243],[20,'Ca','Calcium',2,4,194],[21,'Sc','Scandium',3,4,184],[22,'Ti','Titanium',4,4,176],[23,'V','Vanadium',5,4,171],[24,'Cr','Chromium',6,4,166],[25,'Mn','Manganese',7,4,161],[26,'Fe','Iron',8,4,156],[27,'Co','Cobalt',9,4,152],[28,'Ni','Nickel',10,4,149],[29,'Cu','Copper',11,4,145],[30,'Zn','Zinc',12,4,142],[31,'Ga','Gallium',13,4,136],[32,'Ge','Germanium',14,4,125],
+[33,'As','Arsenic',15,4,114],[34,'Se','Selenium',16,4,103],[35,'Br','Bromine',17,4,94],[36,'Kr','Krypton',18,4,88],
+[37,'Rb','Rubidium',1,5,265],[38,'Sr','Strontium',2,5,219],[39,'Y','Yttrium',3,5,212],[40,'Zr','Zirconium',4,5,206],[41,'Nb','Niobium',5,5,198],[42,'Mo','Molybdenum',6,5,190],[43,'Tc','Technetium',7,5,183],[44,'Ru','Ruthenium',8,5,178],[45,'Rh','Rhodium',9,5,173],[46,'Pd','Palladium',10,5,169],[47,'Ag','Silver',11,5,165],[48,'Cd','Cadmium',12,5,161],[49,'In','Indium',13,5,156],[50,'Sn','Tin',14,5,145],[51,'Sb','Antimony',15,5,133],[52,'Te','Tellurium',16,5,123],[53,'I','Iodine',17,5,115],[54,'Xe','Xenon',18,5,108],
+[55,'Cs','Cesium',1,6,298],[56,'Ba','Barium',2,6,253],[57,'La','Lanthanum',3,6,195],[58,'Ce','Cerium',3,6,185],[59,'Pr','Praseodymium',3,6,247],[60,'Nd','Neodymium',3,6,206],[79,'Au','Gold',11,6,136]];
+const order=['1s','2s','2p','3s','3p','4s','3d','4p','5s','4d','5p','6s','4f','5d','6p','7s','5f','6d','7p'];
+const caps={'s':2,'p':6,'d':10,'f':14};
+const special={24:{'1s':2,'2s':2,'2p':6,'3s':2,'3p':6,'4s':1,'3d':5},29:{'1s':2,'2s':2,'2p':6,'3s':2,'3p':6,'4s':1,'3d':10},46:{'1s':2,'2s':2,'2p':6,'3s':2,'3p':6,'4s':2,'3d':10,'4p':6,'5s':0,'4d':10},79:{'1s':2,'2s':2,'2p':6,'3s':2,'3p':6,'4s':2,'3d':10,'4p':6,'5s':2,'4d':10,'5p':6,'6s':1,'4f':14,'5d':10}};
+let current=3, counts={}, activeTab='config';
+const $=id=>document.getElementById(id);
+function baseConfig(z){let left=z,c={};for(const s of order){let cap=caps[s[1]],n=Math.min(cap,left);if(n)c[s]=n;left-=n;if(!left)break}if(special[z])c={...special[z]};return c}
+function shells(c){let a=[];for(const [s,n] of Object.entries(c)){let sh=+s[0];a[sh]=(a[sh]||0)+n}return a.filter(Boolean)}
+function notation(c){return order.filter(s=>c[s]>0).map(s=>s+'<sup>'+c[s]+'</sup>').join(' ')||'No electrons placed'}
+function occupied(){return Object.values(counts).reduce((a,b)=>a+b,0)}
+function confText(c){return order.filter(s=>c[s]>0).map(s=>s+c[s]).join(' ')||'None'}
+function selectElement(z){current=z;counts=baseConfig(z);renderAll()}
+function renderAll(){const e=els.find(x=>x[0]===current)||els[0];$('element').value=current;$('z').textContent=e[0];$('eCount').textContent=occupied();$('shells').textContent=shells(counts).length;$('notation').innerHTML=notation(counts);$('shellNotation').textContent='Shell totals: '+shells(counts).join(' · ');renderOrbitals();renderAtom();renderPeriodic();renderRadius()}
+function renderOrbitals(){const area=$('orbitalArea');area.innerHTML='';let shown=order.filter(s=>s in counts||order.indexOf(s)<Math.min(order.length,Math.max(6,order.indexOf(Object.keys(counts).slice(-1)[0])+3)));if($('view').value==='number')shown=[...shown].sort((a,b)=>+a[0]- +b[0]||'spdf'.indexOf(a[1])-'spdf'.indexOf(b[1]));for(const s of shown){let n=counts[s]||0,cap=caps[s[1]],orbCount=cap/2;const sub=document.createElement('div');sub.className='subshell';const head=document.createElement('div');head.className='subhead';head.innerHTML=`<span>${s} subshell</span><span class="pill">${n}/${cap} e⁻</span>`;sub.append(head);const boxes=document.createElement('div');boxes.className='boxes';for(let i=0;i<orbCount;i++){let pair=Math.max(0,Math.min(2,n-i*2));const b=document.createElement('div');b.className='orbital';b.title=`Click to add/remove electron in ${s}`;b.innerHTML=(pair>=1?'<span class="up">↑</span>':'')+(pair>=2?'<span class="down">↓</span>':'');b.onclick=()=>{if(n<cap){counts[s]=n+1}else if(n>0){counts[s]=n-1}renderAll()};boxes.append(b)}sub.append(boxes);area.append(sub)}}
+function renderAtom(){const e=els.find(x=>x[0]===current);const sh=shells(counts);let rings='';for(let i=sh.length;i>=1;i--){let r=25+i*22;rings+=`<circle cx="150" cy="150" r="${r}" fill="none" stroke="#9aabc5" stroke-dasharray="4 4"/>`;let n=sh[i-1]||0;for(let j=0;j<n;j++){let a=2*Math.PI*j/n- Math.PI/2;let x=150+r*Math.cos(a),y=150+r*Math.sin(a);rings+=`<circle cx="${x}" cy="${y}" r="4.5" fill="#2457c5"/>`}}$('atom').innerHTML=`<svg viewBox="0 0 300 300" role="img" aria-label="Simplified shell model">${rings}<circle cx="150" cy="150" r="17" fill="#f4a340" stroke="#b36b0a"/><text x="150" y="155" text-anchor="middle" font-size="12" font-weight="700" fill="#382300">${e[2]}</text></svg>`}
+function renderPeriodic(){let root=$('periodic');if(!root.children.length){for(const e of els){let d=document.createElement('button');d.className='el';d.style.gridColumn=e[3];d.style.gridRow=e[4];d.innerHTML=`${e[1]}<span>${e[0]}</span>`;d.onclick=()=>selectElement(e[0]);d.dataset.z=e[0];root.append(d)}}root.querySelectorAll('.el').forEach(d=>d.classList.toggle('active',+d.dataset.z===current));const e=els.find(x=>x[0]===current);$('elementInfo').textContent=`${e[2]} (${e[1]}), atomic number ${e[0]}, period ${e[4]}, group ${e[3]}. Configuration: ${confText(counts)}.`}
+function renderRadius(){const mode=$('radiusMode').value;let data=mode==='period'?els.filter(e=>e[0]>=11&&e[0]<=18):els.filter(e=>[1,3,11].includes(e[0]));let max=Math.max(...data.map(e=>e[5]));$('radiusChart').innerHTML='<div style="display:flex;gap:8px;align-items:end;height:190px;border-bottom:1px solid var(--line);padding:8px 4px">'+data.map(e=>`<div title="${e[2]}: ${e[5]} pm" style="flex:1;text-align:center"><div style="height:${Math.max(8,e[5]/max*145)}px;background:#6c8de0;border-radius:5px 5px 0 0"></div><div style="font-weight:800;font-size:12px;margin-top:5px">${e[1]}</div><div class="mini">${e[5]}</div></div>`).join('')+'</div>';$('radiusTable').innerHTML='<table><thead><tr><th>Element</th><th>Atomic number</th><th>Radius (pm)</th><th>Shell count</th></tr></thead><tbody>'+data.map(e=>`<tr><td>${e[2]} (${e[1]})</td><td>${e[0]}</td><td>${e[5]}</td><td>${e[4]}</td></tr>`).join('')+'</tbody></table>'}
+$('element').innerHTML=els.map(e=>`<option value="${e[0]}">${e[2]} (${e[1]}) — Z=${e[0]}</option>`).join('');
+$('element').onchange=e=>selectElement(+e.target.value);$('view').onchange=renderOrbitals;$('radiusMode').onchange=renderRadius;$('reset').onclick=()=>{counts={};renderAll();$('feedback').textContent='All electrons removed. Build the configuration by clicking orbital boxes.';$('feedback').className='message'};$('next').onclick=()=>selectElement(els[(els.findIndex(e=>e[0]===current)+1)%els.length][0]);$('fill').onclick=()=>{counts=baseConfig(current);renderAll();$('feedback').textContent='Ground-state configuration loaded for comparison.';$('feedback').className='message good'};
+$('check').onclick=()=>{let target=baseConfig(current),ok=order.every(s=>(counts[s]||0)===(target[s]||0))&&occupied()===current;let hund=true;for(let s of order.filter(s=>s[1]==='p'||s[1]==='d'||s[1]==='f')){let n=counts[s]||0;if(n>2){let orbitals=caps[s[1]]/2, singles=Math.min(n,orbitals);let filled=Array.from({length:orbitals},(_,i)=>Math.max(0,Math.min(2,n-i*2)));if(n<=orbitals&&filled.filter(x=>x===1).length!==n)hund=false;}}$('feedback').className='message '+(ok?'good':'bad');$('feedback').textContent=ok?'Correct! Your electron count and ground-state configuration match this model.':`Not yet. Your arrangement has ${occupied()} electron(s); ${els.find(e=>e[0]===current)[2]} has ${current}. Check the filling order, total electron count, opposite spins, and Hund’s rule.`};
+document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{activeTab=b.dataset.tab;document.querySelectorAll('[data-tab]').forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));document.querySelectorAll('.tabpane').forEach(p=>p.hidden=p.id!==activeTab);if(activeTab==='radius')renderRadius()});
+const promptList=[
+['A1 · Hydrogen to neon','What is the electron configuration? How do the 2p electrons follow Hund’s rule?'],
+['A2 · Stability','Why are helium and neon relatively unreactive?'],
+['A3 · Periods','How does Period 2 reflect the subshells of the second shell?'],
+['B · Atomic radius','What happens to atomic radius across Period 3? Explain using nuclear charge.'],
+['B · Chemical families','How does radius change down Group 1? Explain using occupied shells.'],
+['C · Diagonal rule','Which subshell is filled after 4p, after 6s, and after 5d?'],
+['C · Transition metals','How many orbitals are in a d subshell, and how many electrons can it hold?'],
+['C · Periodic table blocks','How does the periodic table’s shape relate to electron configuration?']];
+$('prompts').innerHTML=promptList.map((p,i)=>`<div class="question"><p><b>${p[0]}</b> — ${p[1]}</p><textarea class="answer" data-prompt="${i}" placeholder="Write your own notes here…"></textarea></div>`).join('');
+$('downloadAnswers').onclick=()=>{let textOut='Electron Configuration Lab — Student Notes\\n\\nCurrent element: '+els.find(e=>e[0]===current)[2]+'\\nConfiguration: '+confText(counts)+'\\n\\n';document.querySelectorAll('[data-prompt]').forEach(t=>{textOut+=promptList[+t.dataset.prompt][0]+'\\n'+promptList[+t.dataset.prompt][1]+'\\n'+(t.value||'[No notes entered]')+'\\n\\n'});let blob=new Blob([textOut],{type:'text/plain'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='electron-configuration-notes.txt';a.click();URL.revokeObjectURL(url)};
+selectElement(3);
+</script>
+</body>
+</html>
